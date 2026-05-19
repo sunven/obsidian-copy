@@ -1,0 +1,10 @@
+{
+  "id": "obsidian-copy",
+  "name": "Obsidian Copy",
+  "version": "0.1.0",
+  "minAppVersion": "1.6.0",
+  "description": "Add copy buttons to inline code and fenced code blocks in Reading view and Live Preview.",
+  "author": "sunven",
+  "authorUrl": "",
+  "isDesktopOnly": false
+}
