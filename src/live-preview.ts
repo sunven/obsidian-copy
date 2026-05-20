@@ -3,6 +3,7 @@ import { StateField, type EditorState, type Extension, type Range, type Transact
 import {
   Decoration,
   EditorView,
+  ViewPlugin,
   WidgetType,
   type DecorationSet,
 } from "@codemirror/view";
@@ -31,16 +32,25 @@ type RangeLike = {
 
 type FenceRange = CopyTarget;
 
+const activeCopyWidgetClass = "obsidian-copy-editor-widget-active";
+const copyWidgetSelector = ".obsidian-copy-editor-inline-widget, .obsidian-copy-editor-block-widget";
+
 class CopyButtonWidget extends WidgetType {
   constructor(
     private readonly kind: CopyKind,
+    private readonly from: number,
+    private readonly to: number,
     private readonly text: string
   ) {
     super();
   }
 
   eq(other: WidgetType): boolean {
-    return other instanceof CopyButtonWidget && other.kind === this.kind && other.text === this.text;
+    return other instanceof CopyButtonWidget
+      && other.kind === this.kind
+      && other.from === this.from
+      && other.to === this.to
+      && other.text === this.text;
   }
 
   toDOM(): HTMLElement {
@@ -48,6 +58,8 @@ class CopyButtonWidget extends WidgetType {
     wrapper.className = this.kind === "inline"
       ? "obsidian-copy-editor-inline-widget"
       : "obsidian-copy-editor-block-widget";
+    wrapper.dataset.copyFrom = String(this.from);
+    wrapper.dataset.copyTo = String(this.to);
 
     const button = document.createElement("button");
     button.type = "button";
@@ -80,6 +92,69 @@ class CopyButtonWidget extends WidgetType {
     return true;
   }
 }
+
+function parseCopyWidgetRange(widget: HTMLElement): RangeLike | null {
+  const from = Number(widget.dataset.copyFrom);
+  const to = Number(widget.dataset.copyTo);
+
+  if (!Number.isInteger(from) || !Number.isInteger(to)) {
+    return null;
+  }
+
+  return { from, to };
+}
+
+function findCopyWidgetForPosition(container: ParentNode, position: number): HTMLElement | null {
+  let activeWidget: HTMLElement | null = null;
+  let activeLength = Number.POSITIVE_INFINITY;
+
+  container.querySelectorAll<HTMLElement>(copyWidgetSelector).forEach((widget) => {
+    const range = parseCopyWidgetRange(widget);
+    if (!range || position < range.from || position > range.to) {
+      return;
+    }
+
+    const length = range.to - range.from;
+    if (length < activeLength) {
+      activeWidget = widget;
+      activeLength = length;
+    }
+  });
+
+  return activeWidget;
+}
+
+export function updateActiveCopyWidget(
+  container: ParentNode,
+  position: number | null,
+  eventTarget: EventTarget | null = null
+): void {
+  const hoveredWidget = eventTarget instanceof Element ? eventTarget.closest(copyWidgetSelector) : null;
+  const activeWidget = hoveredWidget instanceof HTMLElement
+    ? hoveredWidget
+    : position === null
+      ? null
+      : findCopyWidgetForPosition(container, position);
+
+  container.querySelectorAll<HTMLElement>(copyWidgetSelector).forEach((widget) => {
+    widget.classList.toggle(activeCopyWidgetClass, widget === activeWidget);
+  });
+}
+
+const copyButtonHoverPlugin = ViewPlugin.define(() => ({}), {
+  eventHandlers: {
+    mousemove(event, view) {
+      updateActiveCopyWidget(
+        view.dom,
+        view.posAtCoords({ x: event.clientX, y: event.clientY }),
+        event.target
+      );
+    },
+    mouseleave(_event, view) {
+      updateActiveCopyWidget(view.dom, null);
+    },
+  },
+});
 
 function collectVisibleRanges(view: EditorView): readonly RangeLike[] {
   return view.visibleRanges.length > 0 ? view.visibleRanges : [{ from: 0, to: view.state.doc.length }];
@@ -299,7 +374,7 @@ function buildDecorations(state: EditorState, visibleRanges: readonly RangeLike[
   for (const target of collectCopyTargets(state, visibleRanges)) {
     decorations.push(
       Decoration.widget({
-        widget: new CopyButtonWidget(target.kind, target.text),
+        widget: new CopyButtonWidget(target.kind, target.from, target.to, target.text),
         side: 1,
         block: target.kind === "block",
       }).range(target.to)
@@ -322,5 +397,5 @@ const copyButtonDecorations = StateField.define<DecorationSet>({
 });
 
 export function createLivePreviewExtension(): Extension {
-  return copyButtonDecorations;
+  return [copyButtonDecorations, copyButtonHoverPlugin];
 }

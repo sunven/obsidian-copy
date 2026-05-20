@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { collectCopyTargets, createLivePreviewExtension } from "../src/live-preview";
+import { collectCopyTargets, createLivePreviewExtension, updateActiveCopyWidget } from "../src/live-preview";
 
 function createMarkdownState(doc: string): EditorState {
   return EditorState.create({
@@ -121,9 +121,12 @@ describe("createLivePreviewExtension", () => {
 
     try {
       const button = parent.querySelector<HTMLButtonElement>(".obsidian-copy-editor-inline-button");
+      const widget = parent.querySelector<HTMLElement>(".obsidian-copy-editor-inline-widget");
 
       expect(button).toBeInstanceOf(HTMLButtonElement);
       expect(button?.getAttribute("data-copy-kind")).toBe("inline");
+      expect(widget?.dataset.copyFrom).toBe("4");
+      expect(widget?.dataset.copyTo).toBe("9");
 
       button?.click();
 
@@ -148,9 +151,12 @@ describe("createLivePreviewExtension", () => {
 
     try {
       const button = parent.querySelector<HTMLButtonElement>(".obsidian-copy-editor-block-button");
+      const widget = parent.querySelector<HTMLElement>(".obsidian-copy-editor-block-widget");
 
       expect(button).toBeInstanceOf(HTMLButtonElement);
       expect(button?.getAttribute("data-copy-kind")).toBe("block");
+      expect(widget?.dataset.copyFrom).toBe("0");
+      expect(widget?.dataset.copyTo).toBe("13");
 
       button?.click();
 
@@ -161,7 +167,7 @@ describe("createLivePreviewExtension", () => {
     }
   });
 
-  it("keeps Live Preview inline copy widgets discoverable by default", () => {
+  it("keeps Live Preview inline copy widgets hidden until code hover activates them", () => {
     const styles = readFileSync(join(process.cwd(), "styles.css"), "utf8");
     const styleEl = document.createElement("style");
     styleEl.textContent = styles;
@@ -177,12 +183,61 @@ describe("createLivePreviewExtension", () => {
     try {
       const computed = getComputedStyle(button);
 
-      expect(computed.opacity).toBe("0.55");
-      expect(computed.position).toBe("static");
-      expect(computed.transform).toBe("none");
+      expect(computed.opacity).toBe("0");
+      expect(computed.pointerEvents).toBe("none");
+      expect(computed.position).toBe("absolute");
+      expect(computed.transform).toBe("translateY(-50%)");
+      expect(styles).toContain("padding: 1px");
+      expect(styles).toContain("height: 1.25rem");
+      expect(styles).toContain("right: 0.05rem");
+      expect(styles).toContain("top: calc(50% + 0.06rem)");
+      expect(styles).toContain("vertical-align: middle");
+      expect(styles).toContain("width: 1.25rem");
+
+      wrapper.classList.add("obsidian-copy-editor-widget-active");
+      const activeComputed = getComputedStyle(button);
+
+      expect(activeComputed.opacity).toBe("1");
+      expect(activeComputed.pointerEvents).toBe("auto");
+      expect(styles).toContain(
+        ".obsidian-copy-editor-inline-widget.obsidian-copy-editor-widget-active > .obsidian-copy-editor-inline-button"
+      );
+      expect(styles).not.toContain(
+        ".obsidian-copy-editor-inline-widget:hover > .obsidian-copy-editor-inline-button"
+      );
+      expect(styles).toContain(
+        ".obsidian-copy-editor-inline-widget:focus-within > .obsidian-copy-editor-inline-button"
+      );
     } finally {
       wrapper.remove();
       styleEl.remove();
     }
+  });
+
+  it("activates the copy widget for the hovered code range", () => {
+    const parent = document.createElement("div");
+    parent.innerHTML = [
+      '<span class="obsidian-copy-editor-inline-widget" data-copy-from="4" data-copy-to="9"></span>',
+      '<span class="obsidian-copy-editor-inline-widget" data-copy-from="14" data-copy-to="19"></span>',
+    ].join("");
+
+    const [first, second] = Array.from(
+      parent.querySelectorAll<HTMLElement>(".obsidian-copy-editor-inline-widget")
+    );
+
+    updateActiveCopyWidget(parent, 6);
+
+    expect(first.classList.contains("obsidian-copy-editor-widget-active")).toBe(true);
+    expect(second.classList.contains("obsidian-copy-editor-widget-active")).toBe(false);
+
+    updateActiveCopyWidget(parent, 16);
+
+    expect(first.classList.contains("obsidian-copy-editor-widget-active")).toBe(false);
+    expect(second.classList.contains("obsidian-copy-editor-widget-active")).toBe(true);
+
+    updateActiveCopyWidget(parent, null);
+
+    expect(first.classList.contains("obsidian-copy-editor-widget-active")).toBe(false);
+    expect(second.classList.contains("obsidian-copy-editor-widget-active")).toBe(false);
   });
 });
