@@ -1,27 +1,23 @@
 # Obsidian Copy
 
-Self-use Obsidian plugin that adds copy buttons for inline code and fenced code blocks.
+Self-use Obsidian plugin that adds copy buttons for inline code.
 
 ## Features
 
-- Reading View: copy buttons for inline code and fenced code blocks.
-- Live Preview: copy buttons for inline code and fenced code blocks.
+- Reading View: copy buttons for inline code.
+- Live Preview: copy buttons for inline code.
 - Inline code copies the inner text only, without backtick markers.
-- Fenced code blocks copy the body only, without fences or language tags.
-- Inner whitespace and newlines are preserved.
-- No extra trailing newline is added.
+- Code blocks use Obsidian's built-in copy control.
 
 ## Supported Markdown
 
 Supported:
 
 - Inline code: `` `value` ``
-- Backtick fenced blocks: ` ```js ... ``` `
-- Tilde fenced blocks: ` ~~~ ... ~~~ `
 
 Out of scope:
 
-- Indented code blocks
+- Fenced and indented code blocks
 - Code embedded in non-Markdown custom renderers
 
 ## Development
@@ -75,4 +71,4 @@ Reload the plugin or restart Obsidian after replacing `main.js`.
 
 ## Notes
 
-Live Preview uses CodeMirror decorations. Inline and block copy buttons share the same copy contract, but block widgets must be provided through a `StateField` because CodeMirror does not allow block decorations from `ViewPlugin` decoration callbacks.
+Live Preview uses CodeMirror decorations for inline code only. Fenced code blocks are still detected while scanning source so inline-looking backticks inside a block do not get copy buttons.

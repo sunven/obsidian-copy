@@ -1,0 +1,80 @@
+.obsidian-copy-inline-wrapper,
+.obsidian-copy-editor-inline-widget {
+  position: relative;
+}
+
+.obsidian-copy-inline-wrapper {
+  display: inline-block;
+  vertical-align: baseline;
+}
+
+.obsidian-copy-inline-wrapper > code {
+  display: inline-block;
+}
+
+.obsidian-copy-inline-button,
+.obsidian-copy-editor-inline-button {
+  align-items: center;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  box-sizing: border-box;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 16px;
+  height: 1em;
+  justify-content: center;
+  line-height: 1;
+  opacity: 0;
+  padding: 2px;
+  pointer-events: none;
+  transition: opacity 120ms ease, color 120ms ease, background-color 120ms ease;
+  width: 1em;
+}
+
+.obsidian-copy-inline-wrapper:hover > .obsidian-copy-inline-button,
+.obsidian-copy-inline-wrapper:focus-within > .obsidian-copy-inline-button,
+.obsidian-copy-editor-inline-widget.obsidian-copy-editor-widget-active > .obsidian-copy-editor-inline-button,
+.obsidian-copy-editor-inline-widget:focus-within > .obsidian-copy-editor-inline-button {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.obsidian-copy-inline-button {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.obsidian-copy-inline-button:hover,
+.obsidian-copy-editor-inline-button:hover {
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  opacity: 1;
+}
+
+.obsidian-copy-inline-button > svg,
+.obsidian-copy-editor-inline-button > svg {
+  height: calc(1em - 4px);
+  width: calc(1em - 4px);
+}
+
+.obsidian-copy-editor-inline-widget {
+  align-items: center;
+  display: inline-block;
+  height: 1em;
+  margin-left: 0;
+  margin-right: 0;
+  vertical-align: text-bottom;
+  width: 0;
+}
+
+.obsidian-copy-editor-inline-button {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+}

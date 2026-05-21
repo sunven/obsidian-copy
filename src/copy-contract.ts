@@ -1,6 +1,6 @@
 import { Notice } from "obsidian";
 
-export type CopyKind = "inline" | "block";
+export type CopyKind = "inline";
 
 export function stripInlineCodeMarkers(source: string): string {
   if (source.indexOf("\n") !== -1 || source.indexOf("\r") !== -1) {
@@ -15,33 +15,12 @@ export function stripInlineCodeMarkers(source: string): string {
   return match[2];
 }
 
-export function stripFencedCodeBlockMarkers(source: string): string {
-  const match = source.match(
-    /^(?:[ \t]*)([`~]{3,})([^\n\r]*)\r?\n([\s\S]*?)\r?\n[ \t]*\1[ \t]*$/
-  );
-
-  if (!match) {
-    return source;
-  }
-
-  return match[3];
-}
-
-export function trimOneTrailingLineBreak(source: string): string {
-  return source.replace(/\r?\n$/, "");
-}
-
-export function normalizeCopySource(kind: CopyKind, source: string): string {
-  if (kind === "inline") {
-    return stripInlineCodeMarkers(source);
-  }
-
-  return stripFencedCodeBlockMarkers(source);
+export function normalizeCopySource(_kind: CopyKind, source: string): string {
+  return stripInlineCodeMarkers(source);
 }
 
 export function extractReadingViewCopyText(kind: CopyKind, text: string): string {
-  const normalized = normalizeCopySource(kind, text);
-  return kind === "block" ? trimOneTrailingLineBreak(normalized) : normalized;
+  return normalizeCopySource(kind, text);
 }
 
 export function extractSourceCopyText(kind: CopyKind, source: string): string {
@@ -74,10 +53,10 @@ export async function copyToClipboard(text: string): Promise<void> {
   }
 }
 
-export function notifyCopySuccess(kind: CopyKind): void {
-  new Notice(kind === "inline" ? "Copied inline code" : "Copied code block");
+export function notifyCopySuccess(_kind: CopyKind): void {
+  new Notice("Copied inline code");
 }
 
-export function notifyCopyFailure(kind: CopyKind): void {
-  new Notice(kind === "inline" ? "Failed to copy inline code" : "Failed to copy code block");
+export function notifyCopyFailure(_kind: CopyKind): void {
+  new Notice("Failed to copy inline code");
 }

@@ -1,7 +1,7 @@
 {
   "name": "obsidian-copy",
   "version": "0.1.0",
-  "description": "Obsidian plugin that adds copy buttons to inline code and fenced code blocks.",
+  "description": "Obsidian plugin that adds copy buttons to inline code.",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",

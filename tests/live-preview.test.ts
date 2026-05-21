@@ -15,7 +15,7 @@ function createMarkdownState(doc: string): EditorState {
 }
 
 describe("collectCopyTargets", () => {
-  it("collects inline and fenced code copy targets from markdown syntax tree", () => {
+  it("collects inline code copy targets from markdown syntax tree", () => {
     const doc = "Use `abc` here.\n\n```ts\nconsole.log(1)\n```";
     const state = createMarkdownState(doc);
 
@@ -25,12 +25,6 @@ describe("collectCopyTargets", () => {
         from: 4,
         to: 9,
         text: "abc",
-      },
-      {
-        kind: "block",
-        from: 17,
-        to: 41,
-        text: "console.log(1)",
       },
     ]);
   });
@@ -74,7 +68,7 @@ describe("collectCopyTargets", () => {
     ]);
   });
 
-  it("falls back to source scanning when no markdown syntax tree is available", () => {
+  it("falls back to source scanning without adding fenced code block targets", () => {
     const doc = "Use `abc` here.\n\n```js\nconst value = `not inline`;\n```";
     const state = EditorState.create({ doc });
 
@@ -84,12 +78,6 @@ describe("collectCopyTargets", () => {
         from: 4,
         to: 9,
         text: "abc",
-      },
-      {
-        kind: "block",
-        from: 17,
-        to: 54,
-        text: "const value = `not inline`;",
       },
     ]);
   });
@@ -137,7 +125,7 @@ describe("createLivePreviewExtension", () => {
     }
   });
 
-  it("renders a fenced code block copy widget without breaking editor creation", async () => {
+  it("leaves fenced code blocks without plugin copy widgets", () => {
     const parent = document.createElement("div");
     document.body.appendChild(parent);
 
@@ -153,14 +141,9 @@ describe("createLivePreviewExtension", () => {
       const button = parent.querySelector<HTMLButtonElement>(".obsidian-copy-editor-block-button");
       const widget = parent.querySelector<HTMLElement>(".obsidian-copy-editor-block-widget");
 
-      expect(button).toBeInstanceOf(HTMLButtonElement);
-      expect(button?.getAttribute("data-copy-kind")).toBe("block");
-      expect(widget?.dataset.copyFrom).toBe("0");
-      expect(widget?.dataset.copyTo).toBe("13");
-
-      button?.click();
-
-      await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith("abc"));
+      expect(button).toBeNull();
+      expect(widget).toBeNull();
+      expect(writeText).not.toHaveBeenCalled();
     } finally {
       view.destroy();
       parent.remove();
@@ -187,12 +170,18 @@ describe("createLivePreviewExtension", () => {
       expect(computed.pointerEvents).toBe("none");
       expect(computed.position).toBe("absolute");
       expect(computed.transform).toBe("translateY(-50%)");
-      expect(styles).toContain("padding: 1px");
-      expect(styles).toContain("height: 1.25rem");
-      expect(styles).toContain("right: 0.05rem");
-      expect(styles).toContain("top: calc(50% + 0.06rem)");
-      expect(styles).toContain("vertical-align: middle");
-      expect(styles).toContain("width: 1.25rem");
+      expect(styles).toContain("box-sizing: border-box");
+      expect(styles).toContain("font-size: 16px");
+      expect(styles).toContain("height: 1em");
+      expect(styles).toContain("padding: 2px");
+      expect(styles).toContain("height: calc(1em - 4px)");
+      expect(styles).toContain("width: calc(1em - 4px)");
+      expect(styles).toContain("width: 1em");
+      expect(styles).toContain("margin-right: 0");
+      expect(styles).toContain("width: 0");
+      expect(styles).toContain("right: 0");
+      expect(styles).toContain("top: 50%");
+      expect(styles).toContain("vertical-align: text-bottom");
 
       wrapper.classList.add("obsidian-copy-editor-widget-active");
       const activeComputed = getComputedStyle(button);

@@ -14,12 +14,10 @@ import {
   extractSourceCopyText,
   notifyCopyFailure,
   notifyCopySuccess,
-  trimOneTrailingLineBreak,
-  type CopyKind,
 } from "./copy-contract";
 
 type CopyTarget = {
-  kind: CopyKind;
+  kind: "inline";
   from: number;
   to: number;
   text: string;
@@ -30,14 +28,13 @@ type RangeLike = {
   to: number;
 };
 
-type FenceRange = CopyTarget;
+type FenceRange = RangeLike;
 
 const activeCopyWidgetClass = "obsidian-copy-editor-widget-active";
-const copyWidgetSelector = ".obsidian-copy-editor-inline-widget, .obsidian-copy-editor-block-widget";
+const copyWidgetSelector = ".obsidian-copy-editor-inline-widget";
 
 class CopyButtonWidget extends WidgetType {
   constructor(
-    private readonly kind: CopyKind,
     private readonly from: number,
     private readonly to: number,
     private readonly text: string
@@ -47,28 +44,23 @@ class CopyButtonWidget extends WidgetType {
 
   eq(other: WidgetType): boolean {
     return other instanceof CopyButtonWidget
-      && other.kind === this.kind
       && other.from === this.from
       && other.to === this.to
       && other.text === this.text;
   }
 
   toDOM(): HTMLElement {
-    const wrapper = document.createElement(this.kind === "inline" ? "span" : "div");
-    wrapper.className = this.kind === "inline"
-      ? "obsidian-copy-editor-inline-widget"
-      : "obsidian-copy-editor-block-widget";
+    const wrapper = document.createElement("span");
+    wrapper.className = "obsidian-copy-editor-inline-widget";
     wrapper.dataset.copyFrom = String(this.from);
     wrapper.dataset.copyTo = String(this.to);
 
     const button = document.createElement("button");
     button.type = "button";
-    button.className = this.kind === "inline"
-      ? "obsidian-copy-editor-inline-button"
-      : "obsidian-copy-editor-block-button";
-    button.ariaLabel = this.kind === "inline" ? "Copy inline code" : "Copy code block";
+    button.className = "obsidian-copy-editor-inline-button";
+    button.ariaLabel = "Copy inline code";
     button.title = button.ariaLabel;
-    button.setAttribute("data-copy-kind", this.kind);
+    button.setAttribute("data-copy-kind", "inline");
     setIcon(button, "copy");
 
     button.addEventListener("click", async (event) => {
@@ -77,10 +69,10 @@ class CopyButtonWidget extends WidgetType {
 
       try {
         await copyToClipboard(this.text);
-        notifyCopySuccess(this.kind);
+        notifyCopySuccess("inline");
       } catch (error) {
         console.error(error);
-        notifyCopyFailure(this.kind);
+        notifyCopyFailure("inline");
       }
     });
 
@@ -238,13 +230,7 @@ function collectFenceRanges(source: string): FenceRange[] {
       const closingFence = findClosingFence(source, contentFrom, marker, markerLength);
 
       if (closingFence) {
-        const target = {
-          kind: "block" as const,
-          from: lineStart,
-          to: closingFence.end,
-          text: trimOneTrailingLineBreak(source.slice(contentFrom, closingFence.start)),
-        };
-        ranges.push(target);
+        ranges.push({ from: lineStart, to: closingFence.end });
 
         const closingBreakLength = lineBreakLength(source, closingFence.end);
         lineStart = closingFence.end + closingBreakLength;
@@ -320,7 +306,7 @@ function collectInlineSourceTargets(source: string, fenceRanges: readonly FenceR
 function collectSourceTargets(state: EditorState, visibleRanges: readonly RangeLike[]): CopyTarget[] {
   const source = state.doc.toString();
   const fenceRanges = collectFenceRanges(source);
-  return [...fenceRanges, ...collectInlineSourceTargets(source, fenceRanges)].filter((target) =>
+  return collectInlineSourceTargets(source, fenceRanges).filter((target) =>
     targetIsVisible(target, visibleRanges)
   );
 }
@@ -339,17 +325,16 @@ function collectSyntaxTreeTargets(
       to: range.to,
       enter: (node) => {
         const name = node.type.name;
-        if (name !== "InlineCode" && name !== "FencedCode") {
+        if (name !== "InlineCode") {
           return;
         }
 
-        const kind: CopyKind = name === "InlineCode" ? "inline" : "block";
         const source = state.doc.sliceString(node.from, node.to);
         addTarget(targets, seen, {
-          kind,
+          kind: "inline",
           from: node.from,
           to: node.to,
-          text: extractSourceCopyText(kind, source),
+          text: extractSourceCopyText("inline", source),
         });
       },
     });
@@ -374,9 +359,8 @@ function buildDecorations(state: EditorState, visibleRanges: readonly RangeLike[
   for (const target of collectCopyTargets(state, visibleRanges)) {
     decorations.push(
       Decoration.widget({
-        widget: new CopyButtonWidget(target.kind, target.from, target.to, target.text),
+        widget: new CopyButtonWidget(target.from, target.to, target.text),
         side: 1,
-        block: target.kind === "block",
       }).range(target.to)
     );
   }
